@@ -1,0 +1,33 @@
+# Node
+backend/node_modules/
+frontend/node_modules/
+
+# Next.js
+frontend/.next/
+
+# VS Code
+.vscode/
+
+# Python
+python-ai/venv/
+python-ai/__pycache__/
+python-ai/**/*.pyc
+
+# Python environment
+python-ai/.env
+
+# Backend environment
+backend/.env
+
+# Frontend environment
+frontend/.env.local
+
+# Local RAG data
+python-ai/chroma_db/
+python-ai/uploads/
+
+# General
+.env
+.env.local
+*.log
+backend/uploads/
