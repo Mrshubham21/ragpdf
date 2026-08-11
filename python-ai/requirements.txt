@@ -1,10 +1,11 @@
 fastapi
 uvicorn[standard]
 python-multipart
-pypdf
-langchain-text-splitters
-sentence-transformers
-chromadb
-google-generativeai
 python-dotenv
+pypdf
+chromadb
+sentence-transformers
+google-generativeai
 redis
+langchain
+langchain-text-splitters
