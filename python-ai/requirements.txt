@@ -7,5 +7,6 @@ chromadb
 sentence-transformers
 google-generativeai
 redis
+pymongo
 langchain
 langchain-text-splitters
