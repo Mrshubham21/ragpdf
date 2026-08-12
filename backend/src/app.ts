@@ -15,17 +15,15 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests without an origin
       if (!origin) {
         return callback(null, true);
       }
 
-      // Allow known origins
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      // Allow all Vercel deployment URLs for this project
+      // Allow Vercel deployments for this project
       if (
         origin.endsWith(".vercel.app") &&
         origin.includes("ragpdf")
@@ -34,11 +32,20 @@ app.use(
       }
 
       return callback(
-        new Error("Not allowed by CORS")
+        new Error(`CORS blocked: ${origin}`)
       );
     },
+
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS",
+    ],
+
     allowedHeaders: [
       "Content-Type",
       "Authorization",
