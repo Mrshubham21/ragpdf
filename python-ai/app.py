@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
-
+from fastapi import Form
 import chromadb
 import os
 import uuid
@@ -280,71 +280,34 @@ def root():
 
 @app.post("/upload")
 async def upload_pdf(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    documentId: str = Form(...)
 ):
 
-    # Validate file type
-
     if file.content_type != "application/pdf":
-
         return {
             "success": False,
             "message": "Only PDF files are allowed."
         }
 
-    try:
+    file_path = os.path.join(
+        UPLOAD_DIR,
+        f"{documentId}.pdf"
+    )
 
-        document_id = str(
-            uuid.uuid4()
-        )
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
 
-        file_path = os.path.join(
-            UPLOAD_DIR,
-            f"{document_id}.pdf"
-        )
+    print(
+        "✅ PDF uploaded:",
+        documentId
+    )
 
-        file_content = await file.read()
-
-        with open(
-            file_path,
-            "wb"
-        ) as f:
-
-            f.write(file_content)
-
-        print(
-            "✅ PDF uploaded:",
-            file.filename
-        )
-
-        print(
-            "DOCUMENT ID:",
-            document_id
-        )
-
-        return {
-
-            "success": True,
-
-            "documentId": document_id,
-
-            "filename": file.filename
-        }
-
-    except Exception as e:
-
-        print(
-            "❌ Upload error:",
-            repr(e)
-        )
-
-        return {
-
-            "success": False,
-
-            "message": str(e)
-        }
-
+    return {
+        "success": True,
+        "documentId": documentId,
+        "filename": file.filename
+    }
 
 # =========================================================
 # PROCESS PDF
