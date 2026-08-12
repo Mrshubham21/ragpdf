@@ -16,15 +16,15 @@ interface ChatProps {
   setMessages: (messages: Message[]) => void;
 }
 
-export default function Chat({ documentId, messages, setMessages }: ChatProps) {
+export default function Chat({
+  documentId,
+  messages,
+  setMessages,
+}: ChatProps) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
-
-  // =========================
-  // SAFE MESSAGES
-  // =========================
 
   const safeMessages = Array.isArray(messages) ? messages : [];
 
@@ -43,10 +43,6 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
   // =========================
 
   const handleAsk = async () => {
-    // =========================
-    // VALIDATION
-    // =========================
-
     if (!question.trim()) {
       return;
     }
@@ -59,10 +55,6 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
     if (loading) {
       return;
     }
-
-    // =========================
-    // CURRENT QUESTION
-    // =========================
 
     const currentQuestion = question.trim();
 
@@ -83,106 +75,104 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
 
     try {
       // =========================
-      // API URL
+      // NODE BACKEND URL
       // =========================
 
       const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://localhost:5000";
+
+      console.log("=================================");
+      console.log("ASK QUESTION");
+      console.log("API URL:", API_URL);
+      console.log("Document ID:", documentId);
+      console.log("Question:", currentQuestion);
+      console.log("=================================");
 
       // =========================
-      // STREAM FROM FASTAPI
+      // CALL NODE/EXPRESS
       // =========================
 
-      const response = await fetch(`${API_URL}/ask`, {
-        method: "POST",
+      const response = await fetch(
+        `${API_URL}/api/chat/ask`,
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type": "application/json",
-        },
+          headers: {
+            "Content-Type": "application/json",
+          },
 
-        body: JSON.stringify({
-          documentId,
-          question: currentQuestion,
-        }),
-      });
+          body: JSON.stringify({
+            question: currentQuestion,
+            documentId: documentId,
+          }),
+        }
+      );
+
+      console.log("Response status:", response.status);
 
       // =========================
-      // CHECK RESPONSE
+      // RESPONSE CHECK
       // =========================
 
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
+        const errorText = await response.text();
 
-      if (!response.body) {
-        throw new Error("No response body received");
+        console.error(
+          "Server error:",
+          response.status,
+          errorText
+        );
+
+        throw new Error(
+          `Server error: ${response.status}`
+        );
       }
 
       // =========================
-      // EMPTY BOT MESSAGE
+      // PARSE JSON
       // =========================
 
-      let botAnswer = "";
+      const result = await response.json();
+
+      console.log("ASK RESPONSE:", result);
+
+      // =========================
+      // CHECK BACKEND RESPONSE
+      // =========================
+
+      if (!result.success) {
+        throw new Error(
+          result.message || "Failed to get answer"
+        );
+      }
+
+      // =========================
+      // GET ANSWER
+      // =========================
+
+      const answer =
+        typeof result.data === "string"
+          ? result.data
+          : result.data?.answer ||
+            result.data?.data ||
+            "No answer received.";
+
+      // =========================
+      // BOT MESSAGE
+      // =========================
 
       setMessages([
         ...updatedMessages,
         {
           role: "bot",
-          content: "",
+          content: answer,
         },
       ]);
 
-      // =========================
-      // READ STREAM
-      // =========================
-
-      const reader = response.body.getReader();
-
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        // Convert bytes → text
-        const chunk = decoder.decode(value, {
-          stream: true,
-        });
-
-        // Add chunk
-        botAnswer += chunk;
-
-        // Update bot message
-        setMessages([
-          ...updatedMessages,
-          {
-            role: "bot",
-            content: botAnswer,
-          },
-        ]);
-      }
-
-      // Flush remaining decoder data
-      const remaining = decoder.decode();
-
-      if (remaining) {
-        botAnswer += remaining;
-
-        setMessages([
-          ...updatedMessages,
-          {
-            role: "bot",
-            content: botAnswer,
-          },
-        ]);
-      }
-
-      console.log("✅ Streaming completed");
+      console.log("✅ Answer received");
     } catch (error) {
-      console.error("Ask error:", error);
+      console.error("❌ Ask error:", error);
 
       setMessages([
         ...updatedMessages,
@@ -199,12 +189,15 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
 
   return (
     <div className="h-full flex flex-col bg-[#343541]">
+
       {/* =========================
           HEADER
       ========================= */}
 
       <div className="border-b border-gray-700 p-4">
-        <div className="text-lg font-semibold">💬 PDF Assistant</div>
+        <div className="text-lg font-semibold">
+          💬 PDF Assistant
+        </div>
       </div>
 
       {/* =========================
@@ -212,18 +205,25 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
       ========================= */}
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+
         {/* EMPTY STATE */}
 
         {safeMessages.length === 0 && (
           <div className="h-full flex items-center justify-center">
             <div className="text-center text-gray-400">
-              <div className="text-4xl mb-4">📄</div>
 
-              <h2 className="text-xl mb-2">Ask your PDF</h2>
+              <div className="text-4xl mb-4">
+                📄
+              </div>
+
+              <h2 className="text-xl mb-2">
+                Ask your PDF
+              </h2>
 
               <p className="text-sm">
                 Upload a PDF and start asking questions.
               </p>
+
             </div>
           </div>
         )}
@@ -234,12 +234,13 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
           <div
             key={index}
             className={`flex gap-3 ${
-              msg.role === "user" ? "justify-end" : "justify-start"
+              msg.role === "user"
+                ? "justify-end"
+                : "justify-start"
             }`}
           >
-            {/* =====================
-                  AI ICON
-              ===================== */}
+
+            {/* AI ICON */}
 
             {msg.role === "bot" && (
               <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center text-xs font-semibold shrink-0">
@@ -247,9 +248,7 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
               </div>
             )}
 
-            {/* =====================
-                  MESSAGE BUBBLE
-              ===================== */}
+            {/* MESSAGE BUBBLE */}
 
             <div
               className={`max-w-[75%] rounded-xl px-4 py-3 leading-relaxed ${
@@ -258,20 +257,24 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
                   : "bg-[#444654] text-white"
               }`}
             >
-              {/* =====================
-                    MARKDOWN / THINKING
-                ===================== */}
 
               {msg.content ? (
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
+
                     h1: ({ ...props }) => (
-                      <h1 className="text-2xl font-bold mb-3" {...props} />
+                      <h1
+                        className="text-2xl font-bold mb-3"
+                        {...props}
+                      />
                     ),
 
                     h2: ({ ...props }) => (
-                      <h2 className="text-xl font-bold mb-3" {...props} />
+                      <h2
+                        className="text-xl font-bold mb-3"
+                        {...props}
+                      />
                     ),
 
                     h3: ({ ...props }) => (
@@ -282,7 +285,10 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
                     ),
 
                     p: ({ ...props }) => (
-                      <p className="mb-3 last:mb-0" {...props} />
+                      <p
+                        className="mb-3 last:mb-0"
+                        {...props}
+                      />
                     ),
 
                     ul: ({ ...props }) => (
@@ -299,10 +305,18 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
                       />
                     ),
 
-                    li: ({ ...props }) => <li className="text-sm" {...props} />,
+                    li: ({ ...props }) => (
+                      <li
+                        className="text-sm"
+                        {...props}
+                      />
+                    ),
 
                     strong: ({ ...props }) => (
-                      <strong className="font-semibold" {...props} />
+                      <strong
+                        className="font-semibold"
+                        {...props}
+                      />
                     ),
 
                     code: ({ ...props }) => (
@@ -340,45 +354,53 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
                 )
               )}
 
-              {/* =====================
-                    SOURCES
-                ===================== */}
+              {/* SOURCES */}
 
-              {msg.sources && msg.sources.length > 0 && (
-                <details className="mt-4 pt-3 border-t border-gray-600">
-                  <summary className="cursor-pointer text-xs font-semibold text-gray-300">
-                    View sources
-                  </summary>
+              {msg.sources &&
+                msg.sources.length > 0 && (
+                  <details className="mt-4 pt-3 border-t border-gray-600">
 
-                  <div className="mt-2 space-y-2">
-                    {msg.sources.map((source, sourceIndex) => (
-                      <div
-                        key={sourceIndex}
-                        className="text-xs text-gray-400 bg-black/20 rounded p-2"
-                      >
-                        {source.slice(0, 200)}
+                    <summary className="cursor-pointer text-xs font-semibold text-gray-300">
+                      View sources
+                    </summary>
 
-                        {source.length > 200 ? "..." : ""}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
+                    <div className="mt-2 space-y-2">
+
+                      {msg.sources.map(
+                        (source, sourceIndex) => (
+                          <div
+                            key={sourceIndex}
+                            className="text-xs text-gray-400 bg-black/20 rounded p-2"
+                          >
+                            {source.slice(0, 200)}
+
+                            {source.length > 200
+                              ? "..."
+                              : ""}
+                          </div>
+                        )
+                      )}
+
+                    </div>
+
+                  </details>
+                )}
+
             </div>
 
-            {/* =====================
-                  USER ICON
-              ===================== */}
+            {/* USER ICON */}
 
             {msg.role === "user" && (
               <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs shrink-0">
                 U
               </div>
             )}
+
           </div>
         ))}
 
         <div ref={bottomRef} />
+
       </div>
 
       {/* =========================
@@ -386,30 +408,50 @@ export default function Chat({ documentId, messages, setMessages }: ChatProps) {
       ========================= */}
 
       <div className="border-t border-gray-700 p-4">
+
         <div className="flex gap-2">
+
           <input
             disabled={!documentId || loading}
             className="flex-1 bg-[#40414f] text-white px-4 py-3 rounded-lg outline-none placeholder-gray-400 disabled:opacity-50"
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder={documentId ? "Message PDF..." : "Upload PDF first..."}
+            onChange={(e) =>
+              setQuestion(e.target.value)
+            }
+            placeholder={
+              documentId
+                ? "Message PDF..."
+                : "Upload PDF first..."
+            }
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey
+              ) {
                 e.preventDefault();
                 handleAsk();
               }
+
             }}
           />
 
           <button
-            disabled={!documentId || loading || !question.trim()}
+            disabled={
+              !documentId ||
+              loading ||
+              !question.trim()
+            }
             onClick={handleAsk}
             className="bg-white text-black px-5 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "..." : "Send"}
           </button>
+
         </div>
+
       </div>
+
     </div>
   );
 }
