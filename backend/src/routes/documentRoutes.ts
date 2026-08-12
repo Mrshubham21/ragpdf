@@ -8,7 +8,7 @@ const router = express.Router();
 router.post(
   "/upload",
   protect,
-  upload.single("pdf"),
+  upload.single("file"),
   uploadDocument
 );
 
