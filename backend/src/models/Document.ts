@@ -1,11 +1,17 @@
-import mongoose, { Document as MongooseDocument, Schema } from "mongoose";
+import mongoose, {
+  Document as MongooseDocument,
+  Schema,
+} from "mongoose";
 
 export interface IDocument extends MongooseDocument {
   fileName: string;
   originalName: string;
   filePath: string;
-  status: "uploaded" | "processing" | "completed" | "failed";
-  uploadedBy: mongoose.Types.ObjectId;
+  status:
+    | "uploaded"
+    | "processing"
+    | "completed"
+    | "failed";
 }
 
 const documentSchema = new Schema<IDocument>(
@@ -27,14 +33,13 @@ const documentSchema = new Schema<IDocument>(
 
     status: {
       type: String,
-      enum: ["uploaded", "processing", "completed", "failed"],
+      enum: [
+        "uploaded",
+        "processing",
+        "completed",
+        "failed",
+      ],
       default: "uploaded",
-    },
-
-    uploadedBy: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
     },
   },
   {

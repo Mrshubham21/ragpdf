@@ -1,6 +1,7 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import Document from "../models/Document";
 import { redisClient } from "../config/redis";
+
 export const uploadDocument = async (
   req: any,
   res: Response
@@ -17,26 +18,26 @@ export const uploadDocument = async (
       fileName: req.file.filename,
       originalName: req.file.originalname,
       filePath: req.file.path,
-      uploadedBy: req.user._id,
       status: "uploaded",
     });
 
     await redisClient.publish(
       "pdf-processing",
       JSON.stringify({
-        documentId: document._id,
+        documentId: document._id.toString(),
         filePath: document.filePath,
       })
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       document,
     });
-  } catch (error) {
-    console.error(error);
 
-    res.status(500).json({
+  } catch (error) {
+    console.error("Upload Error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Upload failed",
     });
