@@ -18,7 +18,9 @@ interface ChatData {
 
 export default function Home() {
   const [chats, setChats] = useState<ChatData[]>([]);
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeChatId, setActiveChatId] =
+    useState<string | null>(null);
+
   const [docId, setDocId] = useState("");
 
   // =========================
@@ -27,40 +29,62 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("chats");
+      const saved =
+        localStorage.getItem("chats");
 
-      if (!saved) {
-        return;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleanedChats: ChatData[] =
+            parsed.map((chat: any) => ({
+              id: String(chat.id),
+              title:
+                chat.title || "New Chat",
+              messages: Array.isArray(
+                chat.messages
+              )
+                ? chat.messages
+                : [],
+            }));
+
+          setChats(cleanedChats);
+
+          setActiveChatId(
+            cleanedChats[0].id
+          );
+
+          return;
+        }
       }
 
-      const parsed = JSON.parse(saved);
+      // =========================
+      // CREATE FIRST CHAT
+      // =========================
 
-      if (!Array.isArray(parsed)) {
-        localStorage.removeItem("chats");
-        return;
-      }
+      const firstChat: ChatData = {
+        id: Date.now().toString(),
+        title: "New Chat",
+        messages: [],
+      };
 
-      // Make sure every chat has messages as an array
-      const cleanedChats: ChatData[] = parsed.map((chat: any) => ({
-        id: String(chat.id),
-        title: chat.title || "New Chat",
-        messages: Array.isArray(chat.messages)
-          ? chat.messages
-          : [],
-      }));
+      setChats([firstChat]);
+      setActiveChatId(firstChat.id);
 
-      setChats(cleanedChats);
-
-      if (cleanedChats.length > 0) {
-        setActiveChatId(cleanedChats[0].id);
-      }
     } catch (error) {
       console.error(
         "Failed to load chat history:",
         error
       );
 
-      localStorage.removeItem("chats");
+      const firstChat: ChatData = {
+        id: Date.now().toString(),
+        title: "New Chat",
+        messages: [],
+      };
+
+      setChats([firstChat]);
+      setActiveChatId(firstChat.id);
     }
   }, []);
 
@@ -95,7 +119,7 @@ export default function Home() {
 
     setActiveChatId(newChat.id);
 
-    // New chat needs a PDF again
+    // New chat needs a new PDF
     setDocId("");
   };
 
@@ -128,7 +152,8 @@ export default function Home() {
   // =========================
 
   const activeChat = chats.find(
-    (chat) => chat.id === activeChatId
+    (chat) =>
+      chat.id === activeChatId
   );
 
   // =========================
@@ -140,13 +165,17 @@ export default function Home() {
   ) => {
     setChats((prev) =>
       prev.map((chat) => {
-        if (chat.id !== activeChatId) {
+
+        if (
+          chat.id !== activeChatId
+        ) {
           return chat;
         }
 
         let title = chat.title;
 
-        // Automatically name chat after first question
+        // Automatically name chat
+        // after first question
         if (
           chat.messages.length === 0 &&
           newMessages.length > 0
@@ -159,11 +188,14 @@ export default function Home() {
 
           if (firstUserMessage) {
             title =
-              firstUserMessage.content
-                .slice(0, 30);
+              firstUserMessage.content.slice(
+                0,
+                30
+              );
 
             if (
-              firstUserMessage.content.length > 30
+              firstUserMessage.content.length >
+              30
             ) {
               title += "...";
             }
@@ -172,9 +204,13 @@ export default function Home() {
 
         return {
           ...chat,
-          messages: Array.isArray(newMessages)
+
+          messages: Array.isArray(
+            newMessages
+          )
             ? newMessages
             : [],
+
           title,
         };
       })
@@ -190,16 +226,12 @@ export default function Home() {
 
       <aside className="w-64 bg-[#202123] p-3 flex flex-col">
 
-        {/* NEW CHAT */}
-
         <button
           onClick={createNewChat}
           className="border border-gray-500 rounded-md p-3 mb-4 hover:bg-gray-700 transition"
         >
           + New Chat
         </button>
-
-        {/* CHAT HISTORY */}
 
         <div className="flex-1 overflow-y-auto space-y-2">
 
@@ -213,19 +245,18 @@ export default function Home() {
               }`}
             >
 
-              {/* CHAT TITLE */}
-
               <button
                 onClick={() => {
-                  setActiveChatId(chat.id);
+                  setActiveChatId(
+                    chat.id
+                  );
+
                   setDocId("");
                 }}
                 className="flex-1 text-left truncate"
               >
                 {chat.title}
               </button>
-
-              {/* DELETE */}
 
               <button
                 onClick={() =>
@@ -244,12 +275,14 @@ export default function Home() {
       </aside>
 
       {/* =========================
-          MAIN AREA
+          MAIN
       ========================= */}
 
       <main className="flex-1 flex flex-col min-w-0">
 
-        {/* UPLOAD AREA */}
+        {/* =========================
+            UPLOAD
+        ========================= */}
 
         <div className="border-b border-gray-700 p-3">
 
@@ -259,7 +292,9 @@ export default function Home() {
 
         </div>
 
-        {/* CHAT */}
+        {/* =========================
+            CHAT
+        ========================= */}
 
         <div className="flex-1 min-h-0">
 
@@ -277,24 +312,7 @@ export default function Home() {
             />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-400">
-
-              <div className="text-center">
-
-                <div className="text-4xl mb-4">
-                  📄
-                </div>
-
-                <h2 className="text-xl mb-2">
-                  Ask your PDF
-                </h2>
-
-                <p className="text-sm">
-                  Create a new chat and upload
-                  a PDF to get started.
-                </p>
-
-              </div>
-
+              Loading chat...
             </div>
           )}
 
