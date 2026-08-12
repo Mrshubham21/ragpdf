@@ -17,7 +17,6 @@ export default function Upload({ setDocId }: any) {
       const res = await API.post("/api/documents/upload", formData)
       const documentId = res.data.documentId;
 
-      await API.post("/process-pdf", { documentId });
 
       setDocId(documentId);
       setFileName(file.name);
