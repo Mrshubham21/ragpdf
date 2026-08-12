@@ -7,14 +7,42 @@ import chatRoutes from "./routes/chatRoutes";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://ragpdf-three.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://ragpdf-three.vercel.app",
-      "https://ragpdf-93dvdtff6-st689801-6062s-projects.vercel.app",
-    ],
+    origin: (origin, callback) => {
+      // Allow requests without an origin
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Allow known origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow all Vercel deployment URLs for this project
+      if (
+        origin.endsWith(".vercel.app") &&
+        origin.includes("ragpdf")
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error("Not allowed by CORS")
+      );
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
   })
 );
 
