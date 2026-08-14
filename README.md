@@ -514,12 +514,6 @@ Building this project provided practical experience with:
 - Render
 - Production debugging
 
-## 👨‍💻 Author
-
-### Shubham Singh
-
-**MCA Student | Full-Stack Developer | AI/ML Enthusiast**
-
 GitHub: https://github.com/Mrshubham21/ragpdf
 
 ## ⭐ Support
