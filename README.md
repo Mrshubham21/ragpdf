@@ -10,7 +10,7 @@ The application combines **Next.js, React, TypeScript, Node.js, Express.js, Pyth
 
 **Node.js Backend:** https://ragpdf-6xru.onrender.com
 
-**Python RAG API:** https://ragpdf-1.onrender.com
+**Python RAG API:** https://ragpdf-2.onrender.com
 
 ## ✨ Features
 
