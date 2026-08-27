@@ -1,14 +1,13 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
-from fastapi import Form
+
 import chromadb
 import os
-import uuid
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -65,7 +64,6 @@ allowed_origins = [
     "http://localhost:3000",
 ]
 
-# Remove duplicates
 allowed_origins = list(set(allowed_origins))
 
 app.add_middleware(
@@ -88,16 +86,23 @@ chats_collection = None
 
 
 def connect_mongodb():
+
     global mongo_client
     global db
     global documents_collection
     global chats_collection
 
     if not MONGO_URI:
-        print("⚠️ MongoDB skipped: MONGO_URI not found")
+
+        print(
+            "⚠️ MongoDB skipped: "
+            "MONGO_URI not found"
+        )
+
         return
 
     try:
+
         mongo_client = MongoClient(
             MONGO_URI,
             serverSelectionTimeoutMS=10000
@@ -106,14 +111,24 @@ def connect_mongodb():
         # Test connection
         mongo_client.admin.command("ping")
 
-        db = mongo_client["pdf_rag_chatbot"]
+        db = mongo_client[
+            "pdf_rag_chatbot"
+        ]
 
-        documents_collection = db["documents"]
-        chats_collection = db["chats"]
+        documents_collection = db[
+            "documents"
+        ]
 
-        print("✅ MongoDB Atlas Connected")
+        chats_collection = db[
+            "chats"
+        ]
+
+        print(
+            "✅ MongoDB Atlas Connected"
+        )
 
     except Exception as e:
+
         print(
             "❌ MongoDB Connection Error:",
             repr(e)
@@ -132,10 +147,12 @@ def configure_gemini():
     global gemini_model
 
     if not GEMINI_API_KEY:
+
         print(
             "⚠️ Gemini skipped: "
             "GEMINI_API_KEY not configured"
         )
+
         return
 
     try:
@@ -148,7 +165,9 @@ def configure_gemini():
             "models/gemini-flash-latest"
         )
 
-        print("✅ Gemini configured")
+        print(
+            "✅ Gemini configured"
+        )
 
     except Exception as e:
 
@@ -182,32 +201,37 @@ print("✅ ChromaDB initialized")
 embedding_model = None
 
 
-def load_embedding_model():
+def get_embedding_model():
 
     global embedding_model
 
-    try:
+    if embedding_model is None:
 
-        print(
-            "🔄 Loading embedding model..."
-        )
+        try:
 
-        embedding_model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2"
-        )
+            print(
+                "🔄 Loading embedding model..."
+            )
 
-        print(
-            "✅ Embedding model loaded"
-        )
+            embedding_model = SentenceTransformer(
+                "sentence-transformers/all-MiniLM-L6-v2",
+                device="cpu"
+            )
 
-    except Exception as e:
+            print(
+                "✅ Embedding model loaded"
+            )
 
-        print(
-            "❌ Embedding model error:",
-            repr(e)
-        )
+        except Exception as e:
 
-        raise
+            print(
+                "❌ Embedding model error:",
+                repr(e)
+            )
+
+            raise
+
+    return embedding_model
 
 
 # =========================================================
@@ -228,8 +252,9 @@ def startup_event():
     # Gemini
     configure_gemini()
 
-    # Embedding model
-    load_embedding_model()
+    # IMPORTANT:
+    # Embedding model is NOT loaded here.
+    # It will be loaded only when needed.
 
     print("==============================")
     print("✅ Application startup complete")
@@ -253,10 +278,12 @@ os.makedirs(
 # =========================================================
 
 class ProcessRequest(BaseModel):
+
     documentId: str
 
 
 class AskRequest(BaseModel):
+
     documentId: str
     question: str
 
@@ -285,6 +312,7 @@ async def upload_pdf(
 ):
 
     if file.content_type != "application/pdf":
+
         return {
             "success": False,
             "message": "Only PDF files are allowed."
@@ -295,8 +323,14 @@ async def upload_pdf(
         f"{documentId}.pdf"
     )
 
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    with open(
+        file_path,
+        "wb"
+    ) as f:
+
+        f.write(
+            await file.read()
+        )
 
     print(
         "✅ PDF uploaded:",
@@ -308,6 +342,7 @@ async def upload_pdf(
         "documentId": documentId,
         "filename": file.filename
     }
+
 
 # =========================================================
 # PROCESS PDF
@@ -321,26 +356,14 @@ def process_pdf(
     print("")
     print("==============================")
     print("📄 PROCESS PDF")
-    print("DOCUMENT ID:", data.documentId)
+    print(
+        "DOCUMENT ID:",
+        data.documentId
+    )
     print("==============================")
 
 
     try:
-
-        # -------------------------------------------------
-        # Check embedding model
-        # -------------------------------------------------
-
-        if embedding_model is None:
-
-            return {
-
-                "success": False,
-
-                "message":
-                "Embedding model is not loaded."
-            }
-
 
         # -------------------------------------------------
         # PDF path
@@ -386,7 +409,10 @@ def process_pdf(
                 or ""
             )
 
-            text += page_text + "\n"
+            text += (
+                page_text
+                + "\n"
+            )
 
 
         print(
@@ -454,13 +480,21 @@ def process_pdf(
 
 
         # -------------------------------------------------
+        # Load embedding model only when required
+        # -------------------------------------------------
+
+        model = get_embedding_model()
+
+
+        # -------------------------------------------------
         # Embeddings
         # -------------------------------------------------
 
         embeddings = (
-            embedding_model
+            model
             .encode(
                 chunks,
+                batch_size=2,
                 show_progress_bar=False
             )
             .tolist()
@@ -586,8 +620,14 @@ def ask_question(
 
     print("")
     print("==============================")
-    print("QUESTION:", data.question)
-    print("DOCUMENT ID:", data.documentId)
+    print(
+        "QUESTION:",
+        data.question
+    )
+    print(
+        "DOCUMENT ID:",
+        data.documentId
+    )
     print("==============================")
 
 
@@ -601,28 +641,12 @@ def ask_question(
 
             def empty_question():
 
-                yield "Please enter a question."
-
-            return StreamingResponse(
-                empty_question(),
-                media_type="text/plain"
-            )
-
-
-        # -------------------------------------------------
-        # Validate embedding model
-        # -------------------------------------------------
-
-        if embedding_model is None:
-
-            def model_error():
-
                 yield (
-                    "Embedding model is not loaded."
+                    "Please enter a question."
                 )
 
             return StreamingResponse(
-                model_error(),
+                empty_question(),
                 media_type="text/plain"
             )
 
@@ -646,13 +670,22 @@ def ask_question(
 
 
         # -------------------------------------------------
+        # Load embedding model only when required
+        # -------------------------------------------------
+
+        model = get_embedding_model()
+
+
+        # -------------------------------------------------
         # Create question embedding
         # -------------------------------------------------
 
         question_embedding = (
-            embedding_model
+            model
             .encode(
-                data.question
+                data.question,
+                batch_size=1,
+                show_progress_bar=False
             )
             .tolist()
         )
@@ -707,7 +740,9 @@ def ask_question(
 
             def no_result():
 
-                yield "Not in document"
+                yield (
+                    "Not in document"
+                )
 
 
             return StreamingResponse(
@@ -764,11 +799,6 @@ def ask_question(
             )
 
 
-            # Chroma distance depends
-            # on collection configuration.
-            # Keep results when distance
-            # isn't available or is reasonably close.
-
             if (
 
                 distance is None
@@ -793,7 +823,10 @@ def ask_question(
             )
 
 
+        # -------------------------------------------------
         # Maximum 5 chunks
+        # -------------------------------------------------
+
         relevant_chunks = (
             relevant_chunks[:5]
         )
